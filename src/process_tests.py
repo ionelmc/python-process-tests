@@ -65,7 +65,7 @@ class TestProcess(BufferingBase):
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
+    def __exit__(self, exc_type=None, exc_value=None, exc_traceback=None):
         try:
             self.proc.send_signal(signal.SIGINT)
             for _ in range(5):
@@ -90,6 +90,7 @@ class TestProcess(BufferingBase):
             if self.proc.stdin:
                 self.proc.stdin.close()
             self.proc.wait() # reap the zombie
+    close = __exit__
 
 class TestSocket(BufferingBase):
     BUFFSIZE = 8192
@@ -101,12 +102,13 @@ class TestSocket(BufferingBase):
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
+    def __exit__(self, exc_type=None, exc_value=None, exc_traceback=None):
         try:
             self.sock.close()
         except OSError as exc:
             if exc.errno not in (errno.EBADF, errno.EBADFD):
                 raise
+    close = __exit__
 
 class ProcessTestCase(unittest.TestCase):
 

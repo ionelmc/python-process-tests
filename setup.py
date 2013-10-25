@@ -5,7 +5,7 @@ import os
 
 setup(
     name = "process-tests",
-    version = "0.1.0",
+    version = "0.1.1",
     url = 'https://github.com/ionelmc/python-process-tests',
     download_url = '',
     license = 'BSD',
