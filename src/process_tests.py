@@ -7,6 +7,8 @@ import fcntl
 import errno
 import time
 import signal
+import atexit
+import traceback
 from contextlib import contextmanager
 try:
     from cStringIO import StringIO
@@ -144,3 +146,73 @@ class ProcessTestCase(unittest.TestCase):
             print(cb())
             print("******************************")
             raise
+
+_COV = None
+def _maybe_enable_coverage():
+    global _COV
+    try:
+        from coverage.control import coverage
+        from coverage.collector import Collector
+    except ImportError:
+        _COV = None
+        return
+    if _COV:
+        _COV.save()
+        _COV.stop()
+    if Collector._collectors:
+        Collector._collectors[-1].stop()
+    _COV = _COV or os.environ.get("WITH_COVERAGE")
+    if _COV:
+        _COV = coverage(auto_data=True, data_suffix=True, timid=False, include=['src/*'])
+        _COV.start()
+
+        @atexit.register
+        def cleanup():
+            if _COV.collector._collectors:
+                _COV.stop()
+            _COV.save()
+
+def monkeypatch(mod, what):
+    """
+    Patch function named <what> from module <mod> to run the decorated function after <what> completes.
+
+    Eg::
+
+        @monkeypatch(os, 'forkpty')
+        def patched_forkpty(pid_fd):
+            pid, fd = pid_fd
+            if not pid:
+                maybe_enable_coverage()
+            return pid, fd
+    """
+
+    old = getattr(mod, what)
+    def decorator(func):
+        def patch():
+            ret = old()
+            try:
+                func(ret)
+            except:
+                traceback.print_exc()
+            return ret
+        setattr(mod, what, patch)
+    return decorator
+
+def setup_coverage_on_fork():
+    """
+    Patch fork and forkpty to restart coverage measurement after fork. Expects to have a environment variable named WITH_COVERAGE set to a
+    non-empty value.
+    """
+    if os.environ.get("WITH_COVERAGE"): # don't even bother if not set
+        @monkeypatch(os, 'fork')
+        def patched_fork(pid):
+            if not pid:
+                _maybe_enable_coverage()
+            return pid
+
+        @monkeypatch(os, 'forkpty')
+        def patched_forkpty(pid_fd):
+            pid, fd = pid_fd
+            if not pid:
+                _maybe_enable_coverage()
+            return pid, fd
