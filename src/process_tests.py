@@ -208,7 +208,7 @@ def setup_coverage(env_var="WITH_COVERAGE"):
 
         @monkeypatch(os, 'fork')
         def patched_fork(pid):
-            if not pid and:
+            if not pid:
                 restart_coverage()
             return pid
 
