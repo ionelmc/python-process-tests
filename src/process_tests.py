@@ -1,4 +1,6 @@
 from __future__ import print_function
+from logging import getLogger
+logger = getLogger(__name__)
 import unittest
 import os
 import sys
@@ -147,30 +149,30 @@ class ProcessTestCase(unittest.TestCase):
             print("******************************")
             raise
 
-_COV = None
+_cov = None
 def restart_coverage():
-    global _COV
+    logger.critical("(RE)STARTING COVERAGE.")
+    global _cov
     try:
         from coverage.control import coverage
         from coverage.collector import Collector
     except ImportError:
-        _COV = None
+        _cov = None
         return
-    if _COV:
-        _COV.save()
-        _COV.stop()
+    if _cov:
+        _cov.save()
+        _cov.stop()
     if Collector._collectors:
         Collector._collectors[-1].stop()
-    _COV = _COV
-    if _COV:
-        _COV = coverage(auto_data=True, data_suffix=True, timid=False, include=['src/*'])
-        _COV.start()
 
-        @atexit.register
-        def cleanup():
-            if _COV.collector._collectors:
-                _COV.stop()
-            _COV.save()
+    _cov = coverage(auto_data=True, data_suffix=True, timid=False, include=['src/*'])
+    _cov.start()
+
+    @atexit.register
+    def cleanup():
+        if _cov.collector._collectors:
+            _cov.stop()
+        _cov.save()
 
 def monkeypatch(mod, what):
     """
@@ -200,7 +202,7 @@ def monkeypatch(mod, what):
 
 def setup_coverage(env_var="WITH_COVERAGE"):
     """
-    Patch fork and forkpty to restart coverage measurement after fork. Expects to have a environment variable named WITH_COVERAGE set to a
+    Patch fork and forkpty to restart coverage measurement after fork. Expects to have a environment variable named WITH_covERAGE set to a
     non-empty value.
     """
     if os.environ.get(env_var): # don't even bother if not set
