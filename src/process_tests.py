@@ -13,13 +13,14 @@ import atexit
 import traceback
 from contextlib import contextmanager
 try:
-    from cStringIO import StringIO
+    from StringIO import StringIO
 except ImportError:
     from io import StringIO
 
 class BufferingBase(object):
-
     BUFFSIZE = 8192
+    ENCODING = "utf8"
+
     def __init__(self, fd):
         self.buff = StringIO()
         self.fd = fd
@@ -33,7 +34,13 @@ class BufferingBase(object):
                 data = os.read(self.fd, self.BUFFSIZE)
                 if not data:
                     break
-                self.buff.write(data.decode('utf8'))
+                try:
+                    data = data.decode(self.ENCODING)
+                except Exception:
+                    logger.exception("Failed to decode %r" % data)
+                    raise
+
+                self.buff.write(data)
         except OSError as e:
             if e.errno not in (
                 errno.EAGAIN, errno.EWOULDBLOCK,
