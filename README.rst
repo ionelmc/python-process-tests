@@ -28,3 +28,9 @@ Similar projects
 ================
 
 * TODO
+
+
+.. image:: https://d2weczhvl823v0.cloudfront.net/ionelmc/python-process-tests/trend.png
+   :alt: Bitdeli badge
+   :target: https://bitdeli.com/free
+
