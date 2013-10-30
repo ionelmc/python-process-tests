@@ -155,6 +155,11 @@ class ProcessTestCase(unittest.TestCase):
             print(cb())
             print("******************************")
             raise
+        #else:
+        #    print("*********** OUTPUT ***********")
+        #    print(cb())
+        #    print("******************************")
+
 
 _cov = None
 def restart_coverage():
@@ -175,38 +180,6 @@ def restart_coverage():
     _cov = coverage(auto_data=True, data_suffix=True, timid=False, include=['src/*'])
     _cov.start()
 
-    @atexit.register
-    def cleanup():
-        if _cov.collector._collectors:
-            _cov.stop()
-        _cov.save()
-
-def monkeypatch(mod, what):
-    """
-    Patch function named <what> from module <mod> to run the decorated function after <what> completes.
-
-    Eg::
-
-        @monkeypatch(os, 'forkpty')
-        def patched_forkpty(pid_fd):
-            pid, fd = pid_fd
-            if not pid:
-                maybe_enable_coverage()
-            return pid, fd
-    """
-
-    old = getattr(mod, what)
-    def decorator(func):
-        def patch():
-            ret = old()
-            try:
-                func(ret)
-            except:
-                traceback.print_exc()
-            return ret
-        setattr(mod, what, patch)
-    return decorator
-
 def setup_coverage(env_var="WITH_COVERAGE"):
     """
     Patch fork and forkpty to restart coverage measurement after fork. Expects to have a environment variable named WITH_covERAGE set to a
@@ -215,15 +188,8 @@ def setup_coverage(env_var="WITH_COVERAGE"):
     if os.environ.get(env_var): # don't even bother if not set
         restart_coverage()
 
-        @monkeypatch(os, 'fork')
-        def patched_fork(pid):
-            if not pid:
-                restart_coverage()
-            return pid
-
-        @monkeypatch(os, 'forkpty')
-        def patched_forkpty(pid_fd):
-            pid, fd = pid_fd
-            if not pid:
-                restart_coverage()
-            return pid, fd
+        def on_exit(code, _exit=os._exit):
+            if _cov:
+                _cov._atexit()
+            _exit(code)
+        os._exit = on_exit
