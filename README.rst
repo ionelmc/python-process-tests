@@ -2,6 +2,10 @@
     python-process-tests
 ============================
 
+.. image:: https://badge.fury.io/py/process-tests.png
+    :alt: PYPI Package
+    :target: https://pypi.python.org/pypi/process-tests
+    
 TODO.
 
 Usage
