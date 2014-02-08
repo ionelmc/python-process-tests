@@ -18,6 +18,13 @@ Features
 
 * TODO
 
+Examples
+========
+
+* https://github.com/ionelmc/python-redis-lock/blob/master/tests/test_redis_lock.py
+* https://github.com/ionelmc/python-manhole/blob/master/tests/test_manhole.py
+* https://github.com/ionelmc/python-stampede/blob/master/tests/test_stampede.py
+
 TODO
 ====
 
