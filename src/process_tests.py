@@ -5,7 +5,13 @@ import unittest
 import os
 import sys
 import subprocess
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = False
+
+import threading
+import Queue
 import errno
 import time
 import signal
@@ -17,12 +23,17 @@ try:
 except ImportError:
     from io import StringIO
 
+
 class BufferingBase(object):
     BUFFSIZE = 8192
     ENCODING = "utf8"
 
-    def __init__(self, fd):
+    def __init__(self, fh):
         self.buff = StringIO()
+        fd = fh.fileno()
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
         self.fd = fd
 
     def read(self):
@@ -52,7 +63,48 @@ class BufferingBase(object):
     def reset(self):
         self.buff = StringIO()
 
-class TestProcess(BufferingBase):
+    def cleanup(self):
+        pass
+
+
+class ThreadedBufferingBase(BufferingBase):
+    def __init__(self, fh):
+        self.buff = StringIO()
+        self.fh = fh
+        self.thread = threading.Thread(target=self.worker)
+        self.thread.start()
+        self.queue = Queue.Queue()
+
+    def worker(self):
+        while not self.fh.closed:
+            try:
+                data = self.fh.readline()
+                if data:
+                    self.queue.put(data)
+                else:
+                    time.sleep(1)
+            except OSError as e:
+                print("Failed to read from %s: %s" % (self.fd, e))
+
+    def read(self):
+        while 1:
+            try:
+                data = self.queue.get_nowait()
+            except Queue.Empty:
+                break
+            try:
+                data = data.decode(self.ENCODING)
+            except Exception:
+                logger.exception("Failed to decode %r" % data)
+                raise
+            self.buff.write(data)
+        return self.buff.getvalue()
+
+    def cleanup(self, ):
+        self.thread.join()
+
+
+class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
     def __init__(self, *args):
         self.proc = subprocess.Popen(
             args,
@@ -61,10 +113,7 @@ class TestProcess(BufferingBase):
             env=os.environ,
             bufsize=1,
         )
-        fd = self.proc.stdout.fileno()
-        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-        super(TestProcess, self).__init__(fd)
+        super(TestProcess, self).__init__(self.proc.stdout)
 
     @property
     def is_alive(self):
@@ -76,31 +125,33 @@ class TestProcess(BufferingBase):
     def __enter__(self):
         return self
 
+
     def __exit__(self, exc_type=None, exc_value=None, exc_traceback=None):
         try:
-            self.proc.send_signal(signal.SIGINT)
             for _ in range(5):
-                time.sleep(0.2)
                 if self.proc.poll() is not None:
-                    self.proc.terminate()
+                    try:
+                        self.proc.terminate()
+                    except Exception as exc:
+                        print("Failed to terminate %s: %s" % (self.proc, exc))
+                time.sleep(0.2)
             for _ in range(10):
                 time.sleep(0.1)
                 if self.proc.poll() is not None:
                     return
-            print('KILLED %s' % self, file=sys.stderr)
+            print('Killing %s !' % self, file=sys.stderr)
             self.proc.kill()
         except OSError as exc:
             if exc.errno != errno.ESRCH:
                 raise
         finally:
-            self.read()
-            if self.proc.stdout:
-                self.proc.stdout.close()
-            if self.proc.stderr:
-                self.proc.stderr.close()
-            if self.proc.stdin:
-                self.proc.stdin.close()
-            self.proc.wait() # reap the zombie
+            try:
+                self.proc.communicate()
+                self.cleanup()
+            except Exception:
+                print('\nFailed to cleanup process:\n', file=sys.stderr)
+                traceback.print_exc()
+
     close = __exit__
 
 class TestSocket(BufferingBase):
@@ -182,7 +233,7 @@ def restart_coverage():
 
 def setup_coverage(env_var="WITH_COVERAGE"):
     """
-    Patch fork and forkpty to restart coverage measurement after fork. Expects to have a environment variable named WITH_covERAGE set to a
+    Patch fork and forkpty to restart coverage measurement after fork. Expects to have a environment variable named WITH_COVERAGE set to a
     non-empty value.
     """
     if os.environ.get(env_var): # don't even bother if not set

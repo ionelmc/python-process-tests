@@ -1,3 +1,4 @@
+
 # -*- encoding: utf8 -*-
 from setuptools import setup, find_packages
 
@@ -5,7 +6,7 @@ import os
 
 setup(
     name="process-tests",
-    version="0.3.1",
+    version="0.4.0",
     url='https://github.com/ionelmc/python-process-tests',
     download_url='',
     license='BSD',
@@ -23,6 +24,7 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: Unix',
         'Operating System :: POSIX',
+        'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python',
         'Topic :: Utilities',
         'Topic :: Software Development :: Testing',
