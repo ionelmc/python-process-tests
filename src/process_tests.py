@@ -7,7 +7,6 @@ import sys
 import threading
 import time
 import traceback
-import unittest
 from contextlib import contextmanager
 from logging import getLogger
 
@@ -26,6 +25,10 @@ try:
 except ImportError:
     from io import StringIO
 
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 class BufferingBase(object):
     BUFFSIZE = 8192
