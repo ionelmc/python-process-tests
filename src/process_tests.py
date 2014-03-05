@@ -1,23 +1,26 @@
 from __future__ import print_function
-from logging import getLogger
-logger = getLogger(__name__)
-import unittest
+
+import errno
 import os
-import sys
 import subprocess
+import sys
+import threading
+import time
+import traceback
+import unittest
+from contextlib import contextmanager
+from logging import getLogger
+
+logger = getLogger(__name__)
 try:
     import fcntl
 except ImportError:
     fcntl = False
 
-import threading
-import Queue
-import errno
-import time
-import signal
-import atexit
-import traceback
-from contextlib import contextmanager
+try:
+    import Queue
+except ImportError:
+    import queue as Queue
 try:
     from StringIO import StringIO
 except ImportError:
