@@ -139,7 +139,7 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                     try:
                         self.proc.terminate()
                     except Exception as exc:
-                        print("Failed to terminate %s: %s" % (self.proc, exc))
+                        print("Failed to terminate %s: %s" % (self.proc.pid, exc))
                 time.sleep(0.2)
             for _ in range(10):
                 time.sleep(0.1)
@@ -234,7 +234,7 @@ def restart_coverage():
     if Collector._collectors:
         Collector._collectors[-1].stop()
 
-    _cov = coverage(auto_data=True, data_suffix=True, timid=False, include=['src/*'])
+    _cov = coverage(auto_data=True, data_suffix=True)
     _cov.start()
 
 def setup_coverage(env_var="WITH_COVERAGE"):
@@ -242,7 +242,7 @@ def setup_coverage(env_var="WITH_COVERAGE"):
     Patch fork and forkpty to restart coverage measurement after fork. Expects to have a environment variable named WITH_COVERAGE set to a
     non-empty value.
     """
-    if os.environ.get(env_var): # don't even bother if not set
+    if os.environ.get(env_var) == 'yes': # don't even bother if not set
         restart_coverage()
 
         def on_exit(code, _exit=os._exit):
