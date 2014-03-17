@@ -178,45 +178,48 @@ class TestSocket(BufferingBase):
                 raise
     close = __exit__
 
+
+def wait_for_strings(cb, seconds, *strings):
+    """
+    This checks that *string appear in cb(), IN THE GIVEN ORDER !
+    """
+    buff = '<UNINITIALIZED>'
+
+    for _ in range(int(seconds * 20)):
+        time.sleep(0.05)
+        buff = cb()
+        check_strings = list(strings)
+        check_strings.reverse()
+        for line in buff.splitlines():
+            if not check_strings:
+                break
+            while check_strings and check_strings[-1] in line:
+                check_strings.pop()
+        if not check_strings:
+            return
+
+    raise AssertionError("Waited %0.2fsecs but %s did not appear in output in the given order !" % (
+        seconds, strings
+    ))
+
+@contextmanager
+def dump_on_error(cb):
+    try:
+        yield
+    except Exception:
+        print("*********** OUTPUT ***********")
+        print(cb())
+        print("******************************")
+        raise
+    #else:
+    #    print("*********** OUTPUT ***********")
+    #    print(cb())
+    #    print("******************************")
+
 class ProcessTestCase(unittest.TestCase):
 
-    def wait_for_strings(self, cb, seconds, *strings):
-        """
-        This checks that *string appear in cb(), IN THE GIVEN ORDER !
-        """
-        buff = '<UNINITIALIZED>'
-
-        for _ in range(int(seconds * 20)):
-            time.sleep(0.05)
-            buff = cb()
-            check_strings = list(strings)
-            check_strings.reverse()
-            for line in buff.splitlines():
-                if not check_strings:
-                    break
-                while check_strings and check_strings[-1] in line:
-                    check_strings.pop()
-            if not check_strings:
-                return
-
-        raise AssertionError("Waited %0.2fsecs but %s did not appear in output in the given order !" % (
-            seconds, strings
-        ))
-
-    @contextmanager
-    def dump_on_error(self, cb):
-        try:
-            yield
-        except Exception:
-            print("*********** OUTPUT ***********")
-            print(cb())
-            print("******************************")
-            raise
-        #else:
-        #    print("*********** OUTPUT ***********")
-        #    print(cb())
-        #    print("******************************")
-
+    dump_on_error = staticmethod(dump_on_error)
+    wait_for_strings = staticmethod(wait_for_strings)
 
 _cov = None
 def restart_coverage():
