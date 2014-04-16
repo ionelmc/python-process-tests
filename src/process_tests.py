@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import errno
 import os
+import socket
 import subprocess
 import sys
 import threading
@@ -131,7 +132,6 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
     def __enter__(self):
         return self
 
-
     def __exit__(self, exc_type=None, exc_value=None, exc_traceback=None):
         try:
             for _ in range(5):
@@ -139,10 +139,13 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                     try:
                         self.proc.terminate()
                     except Exception as exc:
-                        print("Failed to terminate %s: %s" % (self.proc.pid, exc))
+                        if exc.errno == errno.ESRCH:
+                            return
+                        else:
+                            print("Failed to terminate %s: %s" % (self.proc.pid, exc))
                 time.sleep(0.2)
             for _ in range(10):
-                time.sleep(0.1)
+                time.sleep(0.10)
                 if self.proc.poll() is not None:
                     return
             print('Killing %s !' % self, file=sys.stderr)
@@ -153,10 +156,19 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
         finally:
             try:
                 self.proc.communicate()
+            except IOError as exc:
+                if exc.errno != errno.EAGAIN:
+                    print('\nFailed to cleanup process:\n', file=sys.stderr)
+                    traceback.print_exc()
+            except Exception:
+                print('\nFailed to cleanup process:\n', file=sys.stderr)
+                traceback.print_exc()
+            try:
                 self.cleanup()
             except Exception:
                 print('\nFailed to cleanup process:\n', file=sys.stderr)
                 traceback.print_exc()
+
 
     close = __exit__
 
@@ -165,15 +177,16 @@ class TestSocket(BufferingBase):
     def __init__(self, sock):
         sock.setblocking(0)
         self.sock = sock
-        super(TestSocket, self).__init__(sock.fileno())
+        super(TestSocket, self).__init__(sock)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type=None, exc_value=None, exc_traceback=None):
         try:
+            self.sock.shutdown(socket.SHUT_RDWR)
             self.sock.close()
-        except OSError as exc:
+        except (OSError, socket.error) as exc:
             if exc.errno not in (errno.EBADF, errno.EBADFD):
                 raise
     close = __exit__
