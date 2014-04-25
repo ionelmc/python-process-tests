@@ -31,6 +31,8 @@ try:
 except ImportError:
     import unittest
 
+BAD_FD_ERRORS = tuple(getattr(errno, name) for name in ['EBADF', 'EBADFD'] if hasattr(errno, name))
+
 class BufferingBase(object):
     BUFFSIZE = 8192
     ENCODING = "utf8"
@@ -187,7 +189,7 @@ class TestSocket(BufferingBase):
             self.sock.shutdown(socket.SHUT_RDWR)
             self.sock.close()
         except (OSError, socket.error) as exc:
-            if exc.errno not in (errno.EBADF, errno.EBADFD):
+            if exc.errno not in BAD_FD_ERRORS:
                 raise
     close = __exit__
 
