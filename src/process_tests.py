@@ -31,7 +31,7 @@ try:
 except ImportError:
     import unittest
 
-BAD_FD_ERRORS = tuple(getattr(errno, name) for name in ['EBADF', 'EBADFD'] if hasattr(errno, name))
+BAD_FD_ERRORS = tuple(getattr(errno, name) for name in ['EBADF', 'EBADFD', 'ENOTCONN'] if hasattr(errno, name))
 
 class BufferingBase(object):
     BUFFSIZE = 8192
