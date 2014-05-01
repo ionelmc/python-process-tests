@@ -1,6 +1,8 @@
 from __future__ import print_function
 
+import atexit
 import errno
+from functools import partial
 import os
 import socket
 import subprocess
@@ -8,6 +10,7 @@ import sys
 import threading
 import time
 import traceback
+import signal
 from contextlib import contextmanager
 from logging import getLogger
 
@@ -32,6 +35,7 @@ except ImportError:
     import unittest
 
 BAD_FD_ERRORS = tuple(getattr(errno, name) for name in ['EBADF', 'EBADFD', 'ENOTCONN'] if hasattr(errno, name))
+
 
 class BufferingBase(object):
     BUFFSIZE = 8192
@@ -137,7 +141,7 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
     def __exit__(self, exc_type=None, exc_value=None, exc_traceback=None):
         try:
             for _ in range(5):
-                if self.proc.poll() is not None:
+                if self.proc.poll() is None:
                     try:
                         self.proc.terminate()
                     except Exception as exc:
@@ -145,16 +149,15 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                             return
                         else:
                             print("Failed to terminate %s: %s" % (self.proc.pid, exc))
-                time.sleep(0.2)
-            for _ in range(10):
-                time.sleep(0.10)
-                if self.proc.poll() is not None:
+                else:
                     return
-            print('Killing %s !' % self, file=sys.stderr)
-            self.proc.kill()
-        except OSError as exc:
-            if exc.errno != errno.ESRCH:
-                raise
+                time.sleep(0.2)
+            try:
+                print('Killing %s !' % self, file=sys.stderr)
+                self.proc.kill()
+            except OSError as exc:
+                if exc.errno != errno.ESRCH:
+                    raise
         finally:
             try:
                 self.proc.communicate()
@@ -170,9 +173,8 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
             except Exception:
                 print('\nFailed to cleanup process:\n', file=sys.stderr)
                 traceback.print_exc()
-
-
     close = __exit__
+
 
 class TestSocket(BufferingBase):
     BUFFSIZE = 8192
@@ -217,6 +219,7 @@ def wait_for_strings(cb, seconds, *strings):
         seconds, strings
     ))
 
+
 @contextmanager
 def dump_on_error(cb):
     try:
@@ -226,10 +229,17 @@ def dump_on_error(cb):
         print(cb())
         print("******************************")
         raise
-    #else:
-    #    print("*********** OUTPUT ***********")
-    #    print(cb())
-    #    print("******************************")
+
+
+@contextmanager
+def dump_always(cb):
+    try:
+        yield
+    finally:
+        print("*********** OUTPUT ***********")
+        print(cb())
+        print("******************************")
+
 
 class ProcessTestCase(unittest.TestCase):
 
@@ -237,6 +247,8 @@ class ProcessTestCase(unittest.TestCase):
     wait_for_strings = staticmethod(wait_for_strings)
 
 _cov = None
+
+
 def restart_coverage():
     logger.critical("(RE)STARTING COVERAGE.")
     global _cov
@@ -260,11 +272,22 @@ def setup_coverage(env_var="WITH_COVERAGE"):
     Patch fork and forkpty to restart coverage measurement after fork. Expects to have a environment variable named WITH_COVERAGE set to a
     non-empty value.
     """
-    if os.environ.get(env_var) == 'yes': # don't even bother if not set
+    if os.environ.get(env_var) == 'yes':  # don't even bother if not set
         restart_coverage()
 
-        def on_exit(code, _exit=os._exit):
+        handler = signal.getsignal(signal.SIGTERM)
+        if handler is None:
+            logger.critical("SIGTERM handler not installed from python. It's getting overriden !")
+            print("SIGTERM handler not installed from python. It's getting overriden !", file=sys.__stderr__)
+
+        @partial(signal.signal, signal.SIGTERM)
+        def on_atexit(signo, frame):
             if _cov:
                 _cov._atexit()
-            _exit(code)
-        os._exit = on_exit
+            if handler == signal.SIG_DFL:
+                signal.signal(signo, signal.SIG_DFL)
+                os.kill(os.getpid(), signo)
+            elif handler == signal.SIG_IGN:
+                pass
+            elif handler:
+                handler(signo, frame)
