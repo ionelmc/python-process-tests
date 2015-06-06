@@ -120,11 +120,11 @@ class ThreadedBufferingBase(BufferingBase):
 class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('env', os.environ)
+        kwargs.setdefault('bufsize', 1)
         self.proc = subprocess.Popen(
             args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            bufsize=1,
             **kwargs
         )
         super(TestProcess, self).__init__(self.proc.stdout)
