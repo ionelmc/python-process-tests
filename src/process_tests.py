@@ -2,24 +2,22 @@ from __future__ import print_function
 
 import atexit
 import errno
-from functools import partial
 import os
+import signal
 import socket
 import subprocess
 import sys
 import threading
 import time
 import traceback
-import signal
 from contextlib import contextmanager
+from functools import partial
 from logging import getLogger
 
-logger = getLogger(__name__)
 try:
     import fcntl
 except ImportError:
     fcntl = False
-
 try:
     import Queue
 except ImportError:
@@ -28,11 +26,12 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
-
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+
+logger = getLogger(__name__)
 
 BAD_FD_ERRORS = tuple(getattr(errno, name) for name in ['EBADF', 'EBADFD', 'ENOTCONN'] if hasattr(errno, name))
 
@@ -67,8 +66,8 @@ class BufferingBase(object):
                 self.buff.write(data)
         except OSError as e:
             if e.errno not in (
-                errno.EAGAIN, errno.EWOULDBLOCK,
-                errno.EINPROGRESS
+                    errno.EAGAIN, errno.EWOULDBLOCK,
+                    errno.EINPROGRESS
             ):
                 print("Failed to read from %s: %s" % (self.fd, e))
         return self.buff.getvalue()
@@ -174,11 +173,13 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
             except Exception:
                 print('\nFailed to cleanup process:\n', file=sys.stderr)
                 traceback.print_exc()
+
     close = __exit__
 
 
 class TestSocket(BufferingBase):
     BUFFSIZE = 8192
+
     def __init__(self, sock):
         sock.setblocking(0)
         self.sock = sock
@@ -194,6 +195,7 @@ class TestSocket(BufferingBase):
         except (OSError, socket.error) as exc:
             if exc.errno not in BAD_FD_ERRORS:
                 raise
+
     close = __exit__
 
 
@@ -203,7 +205,7 @@ def wait_for_strings(cb, seconds, *strings):
     """
     buff = '<UNINITIALIZED>'
 
-    for _ in range(1+int(seconds * 20)):
+    for _ in range(1 + int(seconds * 20)):
         time.sleep(0.05)
         buff = cb()
         check_strings = list(strings)
@@ -243,9 +245,9 @@ def dump_always(cb):
 
 
 class ProcessTestCase(unittest.TestCase):
-
     dump_on_error = staticmethod(dump_on_error)
     wait_for_strings = staticmethod(wait_for_strings)
+
 
 _cov = None
 
@@ -267,6 +269,7 @@ def restart_coverage():
 
     _cov = coverage(auto_data=True, data_suffix=True)
     _cov.start()
+
 
 def setup_coverage(env_var="WITH_COVERAGE"):
     """
