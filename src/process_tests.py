@@ -34,6 +34,7 @@ except ImportError:
 logger = getLogger(__name__)
 
 BAD_FD_ERRORS = tuple(getattr(errno, name) for name in ['EBADF', 'EBADFD', 'ENOTCONN'] if hasattr(errno, name))
+PY3 = sys.version_info[0] == 3
 
 
 class BufferingBase(object):
@@ -96,7 +97,8 @@ class ThreadedBufferingBase(BufferingBase):
                 else:
                     time.sleep(1)
             except OSError as e:
-                print("Failed to read from %s: %s" % (self.fd, e))
+                print("Failed to read from %s: %s" % (self.fh, e))
+                raise
 
     def read(self):
         while 1:
@@ -177,13 +179,21 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
     close = __exit__
 
 
-class TestSocket(BufferingBase):
+class TestSocket(BufferingBase if fcntl else ThreadedBufferingBase):
     BUFFSIZE = 8192
 
     def __init__(self, sock):
-        sock.setblocking(0)
         self.sock = sock
-        super(TestSocket, self).__init__(sock)
+        if PY3:
+            self.fh = sock.makefile('rbw', buffering=1)
+        else:
+            self.fh = sock.makefile(bufsize=0)
+
+        if fcntl:
+            sock.setblocking(0)
+            super(TestSocket, self).__init__(sock)
+        else:
+            super(TestSocket, self).__init__(self.fh)
 
     def __enter__(self):
         return self
