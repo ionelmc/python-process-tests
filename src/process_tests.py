@@ -215,7 +215,8 @@ def wait_for_strings(cb, seconds, *strings):
     """
     buff = '<UNINITIALIZED>'
 
-    for _ in range(1 + int(seconds * 20)):
+    start = time.time()
+    while time.time() - start < seconds:
         time.sleep(0.05)
         buff = cb()
         check_strings = list(strings)
