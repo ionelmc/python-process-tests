@@ -216,8 +216,7 @@ def wait_for_strings(cb, seconds, *strings):
     buff = '<UNINITIALIZED>'
 
     start = time.time()
-    while time.time() - start < seconds:
-        time.sleep(0.05)
+    while True:
         buff = cb()
         check_strings = list(strings)
         check_strings.reverse()
@@ -228,9 +227,12 @@ def wait_for_strings(cb, seconds, *strings):
                 check_strings.pop()
         if not check_strings:
             return
+        if time.time() - start < seconds:
+            break
+        time.sleep(0.05)
 
     raise AssertionError("Waited %0.2fsecs but %s did not appear in output in the given order !" % (
-        seconds, strings
+        seconds, check_strings
     ))
 
 
