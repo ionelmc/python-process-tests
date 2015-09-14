@@ -227,7 +227,7 @@ def wait_for_strings(cb, seconds, *strings):
                 check_strings.pop()
         if not check_strings:
             return
-        if time.time() - start < seconds:
+        if time.time() - start > seconds:
             break
         time.sleep(0.05)
 
