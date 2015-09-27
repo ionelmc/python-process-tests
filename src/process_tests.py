@@ -143,6 +143,10 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
     def __exit__(self, exc_type=None, exc_value=None, exc_traceback=None):
         try:
             for _ in range(5):
+                if self.proc.poll() is not None:
+                    return
+                time.sleep(0.2)
+            for _ in range(5):
                 if self.proc.poll() is None:
                     try:
                         self.proc.terminate()
