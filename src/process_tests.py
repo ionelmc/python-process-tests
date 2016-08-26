@@ -166,7 +166,8 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                     raise
         finally:
             try:
-                self.proc.communicate()
+                out, _ = self.proc.communicate()
+                self.buff.write(out)
             except IOError as exc:
                 if exc.errno != errno.EAGAIN:
                     print('\nFailed to cleanup process:\n', file=sys.stderr)
