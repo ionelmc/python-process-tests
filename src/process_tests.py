@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import atexit
 import errno
 import os
 import signal
@@ -166,8 +165,13 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                     raise
         finally:
             try:
-                out, _ = self.proc.communicate()
-                self.buff.write(out)
+                data, _ = self.proc.communicate()
+                try:
+                    data = data.decode(self.ENCODING)
+                except Exception:
+                    logger.exception("Failed to decode %r" % data)
+                    raise
+                self.buff.write(data)
             except IOError as exc:
                 if exc.errno != errno.EAGAIN:
                     print('\nFailed to cleanup process:\n', file=sys.stderr)
