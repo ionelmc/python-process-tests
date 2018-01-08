@@ -125,6 +125,7 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
             args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            close_fds=True,
             **kwargs
         )
         super(TestProcess, self).__init__(self.proc.stdout)
