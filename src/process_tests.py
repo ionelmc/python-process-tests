@@ -222,8 +222,6 @@ def wait_for_strings(cb, seconds, *strings):
     """
     This checks that *string appear in cb(), IN THE GIVEN ORDER !
     """
-    buff = '<UNINITIALIZED>'
-
     start = time.time()
     while True:
         buff = cb()
