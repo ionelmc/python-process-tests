@@ -59,17 +59,17 @@ class BufferingBase(object):
                     break
                 try:
                     data = data.decode(self.ENCODING)
-                except Exception:
-                    logger.exception("Failed to decode %r" % data)
+                except Exception as exc:
+                    logger.exception("%r failed to decode %r: %r", self, data, exc)
                     raise
 
                 self.buff.write(data)
-        except OSError as e:
-            if e.errno not in (
+        except OSError as exc:
+            if exc.errno not in (
                     errno.EAGAIN, errno.EWOULDBLOCK,
                     errno.EINPROGRESS
             ):
-                print("Failed to read from %s: %s" % (self.fd, e))
+                logger.exception("%r failed to read from FD %s: %r", self, self.fd, exc)
         return self.buff.getvalue()
 
     def reset(self):
@@ -95,8 +95,8 @@ class ThreadedBufferingBase(BufferingBase):
                     self.queue.put(data)
                 else:
                     time.sleep(1)
-            except OSError as e:
-                print("Failed to read from %s: %s" % (self.fh, e))
+            except OSError as exc:
+                logger.exception("%r failed to read from %s: %r", self, self.fh, exc)
                 raise
 
     def read(self):
@@ -107,8 +107,8 @@ class ThreadedBufferingBase(BufferingBase):
                 break
             try:
                 data = data.decode(self.ENCODING)
-            except Exception:
-                logger.exception("Failed to decode %r" % data)
+            except Exception as exc:
+                logger.exception("%r failed to decode %r: %r", self, data, exc)
                 raise
             self.buff.write(data)
         return self.buff.getvalue()
@@ -136,6 +136,9 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
     def signal(self, sig):
         self.proc.send_signal(sig)
 
+    def __repr__(self):
+        return "TestProcess(pid=%s, is_alive=%s)" % (self.proc.pid, self.is_alive)
+
     def __enter__(self):
         return self
 
@@ -153,12 +156,12 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                         if exc.errno == errno.ESRCH:
                             return
                         else:
-                            print("Failed to terminate %s: %s" % (self.proc.pid, exc))
+                            logger.exception("%r failed to terminate process: %r", self, exc)
                 else:
                     return
                 time.sleep(0.2)
             try:
-                print('Killing %s !' % self, file=sys.stderr)
+                logger.critical('%s killing unresponsive process!', self)
                 self.proc.kill()
             except OSError as exc:
                 if exc.errno != errno.ESRCH:
@@ -168,22 +171,19 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                 data, _ = self.proc.communicate()
                 try:
                     data = data.decode(self.ENCODING)
-                except Exception:
-                    logger.exception("Failed to decode %r" % data)
+                except Exception as exc:
+                    logger.exception("%s failed to decode %r: %r", self, data, exc)
                     raise
                 self.buff.write(data)
             except IOError as exc:
                 if exc.errno != errno.EAGAIN:
-                    print('\nFailed to cleanup process:\n', file=sys.stderr)
-                    traceback.print_exc()
-            except Exception:
-                print('\nFailed to cleanup process:\n', file=sys.stderr)
-                traceback.print_exc()
+                    logger.exception('%s failed to cleanup buffers: %r', self, exc)
+            except Exception as exc:
+                logger.exception('%s failed to cleanup buffers: %r', self, exc)
             try:
                 self.cleanup()
-            except Exception:
-                print('\nFailed to cleanup process:\n', file=sys.stderr)
-                traceback.print_exc()
+            except Exception as exc:
+                logger.exception('%s failed to cleanup: %r', self, exc)
 
     close = __exit__
 
