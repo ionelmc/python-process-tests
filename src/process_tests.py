@@ -118,6 +118,8 @@ class ThreadedBufferingBase(BufferingBase):
 
 
 class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
+    __test__ = False
+
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('env', os.environ)
         kwargs.setdefault('bufsize', 1)
@@ -190,6 +192,7 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
 
 
 class TestSocket(BufferingBase if fcntl else ThreadedBufferingBase):
+    __test__ = False
     BUFFSIZE = 8192
 
     def __init__(self, sock):
