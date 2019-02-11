@@ -2,15 +2,12 @@ from __future__ import print_function
 
 import errno
 import os
-import signal
 import socket
 import subprocess
 import sys
 import threading
 import time
-import traceback
 from contextlib import contextmanager
-from functools import partial
 from logging import getLogger
 
 try:
