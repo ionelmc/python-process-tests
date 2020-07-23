@@ -34,9 +34,9 @@ Overview
     :alt: Supported implementations
     :target: https://pypi.org/project/process-tests
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/ionelmc/python-process-tests/v2.1.0.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/ionelmc/python-process-tests/v2.1.1.svg
     :alt: Commits since latest release
-    :target: https://github.com/ionelmc/python-process-tests/compare/v2.1.0...master
+    :target: https://github.com/ionelmc/python-process-tests/compare/v2.1.1...master
 
 
 
