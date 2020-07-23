@@ -1,12 +1,50 @@
-============================
-    python-process-tests
-============================
+========
+Overview
+========
 
-.. image:: https://badge.fury.io/py/process-tests.png
-    :alt: PYPI Package
-    :target: https://pypi.python.org/pypi/process-tests
+.. start-badges
+
+.. list-table::
+    :stub-columns: 1
+
+    * - tests
+      - | |requires|
+        |
+    * - package
+      - | |version| |wheel| |supported-versions| |supported-implementations|
+        | |commits-since|
+
+.. |requires| image:: https://requires.io/github/ionelmc/python-process-tests/requirements.svg?branch=master
+    :alt: Requirements Status
+    :target: https://requires.io/github/ionelmc/python-process-tests/requirements/?branch=master
+
+.. |version| image:: https://img.shields.io/pypi/v/process-tests.svg
+    :alt: PyPI Package latest release
+    :target: https://pypi.org/project/process-tests
+
+.. |wheel| image:: https://img.shields.io/pypi/wheel/process-tests.svg
+    :alt: PyPI Wheel
+    :target: https://pypi.org/project/process-tests
+
+.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/process-tests.svg
+    :alt: Supported versions
+    :target: https://pypi.org/project/process-tests
+
+.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/process-tests.svg
+    :alt: Supported implementations
+    :target: https://pypi.org/project/process-tests
+
+.. |commits-since| image:: https://img.shields.io/github/commits-since/ionelmc/python-process-tests/v2.0.2.svg
+    :alt: Commits since latest release
+    :target: https://github.com/ionelmc/python-process-tests/compare/v2.0.2...master
+
+
+
+.. end-badges
 
 Tools for testing processes.
+
+* Free software: BSD 2-Clause License
 
 Usage
 =====

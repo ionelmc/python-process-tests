@@ -27,6 +27,8 @@ try:
 except ImportError:
     import unittest
 
+__version__ = '2.0.2'
+
 logger = getLogger(__name__)
 
 BAD_FD_ERRORS = tuple(getattr(errno, name) for name in ['EBADF', 'EBADFD', 'ENOTCONN'] if hasattr(errno, name))
