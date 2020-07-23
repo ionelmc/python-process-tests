@@ -2,6 +2,11 @@
 Changelog
 =========
 
+2.1.1 (2020-07-23)
+------------------
+
+* Fixed regression caused by the ``universal_newlines`` (now the internals don't decode strings).
+
 2.1.0 (2020-07-23)
 ------------------
 

@@ -173,7 +173,8 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
             try:
                 data, _ = self.proc.communicate()
                 try:
-                    data = data.decode(self.ENCODING)
+                    if isinstance(data, bytes):
+                        data = data.decode(self.ENCODING)
                 except Exception as exc:
                     logger.exception("%s failed to decode %r: %r", self, data, exc)
                     raise
