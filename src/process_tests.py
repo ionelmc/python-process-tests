@@ -271,4 +271,3 @@ def dump_always(cb):
 class ProcessTestCase(unittest.TestCase):
     dump_on_error = staticmethod(dump_on_error)
     wait_for_strings = staticmethod(wait_for_strings)
-
