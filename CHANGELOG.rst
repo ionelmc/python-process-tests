@@ -6,7 +6,8 @@ Changelog
 ------------------
 
 * Applied the cookiecutter-pylibrary templates.
-* 
+* ``TestProcess`` will use ``universal_newlines`` by default for the contained ``subprocess.Popen`` to make sure line buffering is actually
+  used. This also fixes warnings on Python 3.
 
 2.x (???)
 ---------
