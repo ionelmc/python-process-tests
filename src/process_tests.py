@@ -27,7 +27,7 @@ try:
 except ImportError:
     import unittest
 
-__version__ = '2.0.2'
+__version__ = '2.1.0'
 
 logger = getLogger(__name__)
 
