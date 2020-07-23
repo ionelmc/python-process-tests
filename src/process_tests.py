@@ -120,6 +120,7 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('env', os.environ)
         kwargs.setdefault('bufsize', 1)
+        kwargs.setdefault('universal_newlines', True)
         self.proc = subprocess.Popen(
             args,
             stdout=subprocess.PIPE,
