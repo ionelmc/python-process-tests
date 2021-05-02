@@ -105,7 +105,8 @@ class ThreadedBufferingBase(BufferingBase):
             except Queue.Empty:
                 break
             try:
-                data = data.decode(self.ENCODING)
+                if isinstance(data, bytes):
+                    data = data.decode(self.ENCODING)
             except Exception as exc:
                 logger.exception("%r failed to decode %r: %r", self, data, exc)
                 raise

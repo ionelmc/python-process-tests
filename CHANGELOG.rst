@@ -2,6 +2,11 @@
 Changelog
 =========
 
+2.1.2 (2020-07-23)
+------------------
+
+* Fixed another regression caused by the ``universal_newlines`` for Windows.
+
 2.1.1 (2020-07-23)
 ------------------
 
