@@ -25,7 +25,7 @@ def read(*names, **kwargs):
 
 setup(
     name='process-tests',
-    version='2.1.1',
+    version='2.1.2',
     license='BSD-2-Clause',
     description='Tools for testing processes.',
     long_description='%s\n%s' % (
