@@ -93,11 +93,10 @@ class ThreadedBuffer:
                     self.queue.put(data)
                 else:
                     time.sleep(1)
-            except BrokenPipeError as exc:
-                logger.exception('%r ignoring read failure from %s: %r', self, self.fh, exc)
             except OSError as exc:
-                logger.exception('%r failed to read from %s: %r', self, self.fh, exc)
-                raise
+                if exc.errno != errno.EAGAIN:
+                    logger.exception('%r failed to read from %s: %r', self, self.fh, exc)
+                    return
 
     def read(self):
         while 1:
