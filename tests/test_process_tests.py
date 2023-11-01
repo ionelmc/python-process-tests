@@ -1,3 +1,4 @@
+import os
 import re
 import socket
 
@@ -8,7 +9,7 @@ from process_tests import TestSocket
 from process_tests import dump_on_error
 from process_tests import wait_for_strings
 
-TIMEOUT = 60
+TIMEOUT = int(os.getenv('TESTS_TIMEOUT', 60))
 
 
 def test_wait_for_strings():
@@ -16,7 +17,7 @@ def test_wait_for_strings():
         wait_for_strings(proc.read, TIMEOUT, 'foobar')
         with pytest.raises(AssertionError):
             with dump_on_error(proc.read):
-                wait_for_strings(proc.read, TIMEOUT, 'cannot be')
+                wait_for_strings(proc.read, 0.1, 'cannot be')
 
 
 def test_filebuffer(tmp_path):
@@ -25,7 +26,7 @@ def test_filebuffer(tmp_path):
             wait_for_strings(proc.read, TIMEOUT, 'foobar')
             with pytest.raises(AssertionError):
                 with dump_on_error(proc.read):
-                    wait_for_strings(proc.read, TIMEOUT, 'cannot be')
+                    wait_for_strings(proc.read, 0.1, 'cannot be')
 
 
 def test_socket():
@@ -33,8 +34,9 @@ def test_socket():
         with dump_on_error(proc.read, 'SERVER'):
             wait_for_strings(proc.read, TIMEOUT, 'Serving HTTP on')
             (port,) = re.match(r'Serving HTTP on .*? port (\d+) ', proc.read()).groups()
-            with TestSocket(socket.create_connection(('127.0.0.1', int(port)))) as client:
-                client.sock.send(b'GET / HTTP/1.0\n\n')
-                with dump_on_error(client.read, 'CLIENT'):
-                    wait_for_strings(proc.read, TIMEOUT, 'GET / HTTP')
-                    wait_for_strings(client.read, TIMEOUT, 'HTTP/1.0 200 OK')
+            with socket.create_connection(('127.0.0.1', int(port))) as conn:
+                with TestSocket(conn) as client:
+                    client.sock.send(b'GET / HTTP/1.0\n\n')
+                    with dump_on_error(client.read, 'CLIENT'):
+                        wait_for_strings(proc.read, TIMEOUT, 'GET / HTTP')
+                        wait_for_strings(client.read, TIMEOUT, 'HTTP/1.0 200 OK')
