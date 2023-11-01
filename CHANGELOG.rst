@@ -2,6 +2,13 @@
 Changelog
 =========
 
+3.0.0 (2023-11-01)
+------------------
+
+* Dropped Python 2 support.
+* Added an optional non-pipe TestProcess mode. You can use file objects for processes that are too verbose for a pipe.
+* Added some tests.
+
 2.1.2 (2021-05-02)
 ------------------
 
