@@ -8,15 +8,15 @@ Overview
     :stub-columns: 1
 
     * - tests
-      - | |requires|
+      - | |github-actions|
         |
     * - package
       - | |version| |wheel| |supported-versions| |supported-implementations|
         | |commits-since|
 
-.. |requires| image:: https://requires.io/github/ionelmc/python-process-tests/requirements.svg?branch=master
-    :alt: Requirements Status
-    :target: https://requires.io/github/ionelmc/python-process-tests/requirements/?branch=master
+.. |github-actions| image:: https://github.com/ionelmc/python-process-tests/actions/workflows/github-actions.yml/badge.svg
+    :alt: GitHub Actions Build Status
+    :target: https://github.com/ionelmc/python-process-tests/actions
 
 .. |version| image:: https://img.shields.io/pypi/v/process-tests.svg
     :alt: PyPI Package latest release
@@ -36,7 +36,7 @@ Overview
 
 .. |commits-since| image:: https://img.shields.io/github/commits-since/ionelmc/python-process-tests/v2.1.2.svg
     :alt: Commits since latest release
-    :target: https://github.com/ionelmc/python-process-tests/compare/v2.1.2...master
+    :target: https://github.com/ionelmc/python-process-tests/compare/v2.1.2...main
 
 
 
