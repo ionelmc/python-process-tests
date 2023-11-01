@@ -16,7 +16,7 @@ try:
 except ImportError:
     fcntl = False
 
-__version__ = '2.1.2'
+__version__ = '3.0.0'
 
 logger = getLogger(__name__)
 

@@ -13,7 +13,7 @@ def read(*names, **kwargs):
 
 setup(
     name='process-tests',
-    version='2.1.2',
+    version='3.0.0',
     license='BSD-2-Clause',
     description='Tools for testing processes.',
     long_description='{}\n{}'.format(
