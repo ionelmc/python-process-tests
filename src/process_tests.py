@@ -1,44 +1,30 @@
-from __future__ import print_function
-
 import errno
 import os
+import queue as Queue
 import socket
 import subprocess
 import sys
 import threading
 import time
 from contextlib import contextmanager
+from io import StringIO
 from logging import getLogger
+from typing import IO
 
 try:
     import fcntl
 except ImportError:
     fcntl = False
-try:
-    import Queue
-except ImportError:
-    import queue as Queue
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 __version__ = '2.1.2'
 
 logger = getLogger(__name__)
 
+BUFFSIZE = 8192
 BAD_FD_ERRORS = tuple(getattr(errno, name) for name in ['EBADF', 'EBADFD', 'ENOTCONN'] if hasattr(errno, name))
-PY3 = sys.version_info[0] == 3
 
 
-class BufferingBase(object):
-    BUFFSIZE = 8192
-    ENCODING = "utf8"
-
+class PipeBuffer:
     def __init__(self, fh):
         self.buff = StringIO()
         fd = fh.fileno()
@@ -53,22 +39,15 @@ class BufferingBase(object):
         """
         try:
             while 1:
-                data = os.read(self.fd, self.BUFFSIZE)
+                data = os.read(self.fd, BUFFSIZE)
                 if not data:
                     break
-                try:
-                    data = data.decode(self.ENCODING)
-                except Exception as exc:
-                    logger.exception("%r failed to decode %r: %r", self, data, exc)
-                    raise
-
+                if isinstance(data, bytes):
+                    data = data.decode(errors='backslashreplace')
                 self.buff.write(data)
         except OSError as exc:
-            if exc.errno not in (
-                    errno.EAGAIN, errno.EWOULDBLOCK,
-                    errno.EINPROGRESS
-            ):
-                logger.exception("%r failed to read from FD %s: %r", self, self.fd, exc)
+            if exc.errno not in (errno.EAGAIN, errno.EWOULDBLOCK, errno.EINPROGRESS):
+                logger.exception('%r failed to read from FD %s: %r', self, self.fd, exc)
         return self.buff.getvalue()
 
     def reset(self):
@@ -78,7 +57,27 @@ class BufferingBase(object):
         pass
 
 
-class ThreadedBufferingBase(BufferingBase):
+class FileBuffer:
+    def __init__(self, path):
+        self.fh = open(path, 'rb')
+        self.position = 0
+
+    def read(self):
+        """
+        Read any available data fd. Does NOT block.
+        """
+        self.fh.seek(self.position)
+        data = self.fh.read()
+        return data.decode(errors='backslashreplace')
+
+    def reset(self):
+        self.position = self.fh.seek(0, os.SEEK_END)
+
+    def cleanup(self):
+        self.fh.close()
+
+
+class ThreadedBuffer:
     def __init__(self, fh):
         self.buff = StringIO()
         self.fh = fh
@@ -95,7 +94,7 @@ class ThreadedBufferingBase(BufferingBase):
                 else:
                     time.sleep(1)
             except OSError as exc:
-                logger.exception("%r failed to read from %s: %r", self, self.fh, exc)
+                logger.exception('%r failed to read from %s: %r', self, self.fh, exc)
                 raise
 
     def read(self):
@@ -104,34 +103,37 @@ class ThreadedBufferingBase(BufferingBase):
                 data = self.queue.get_nowait()
             except Queue.Empty:
                 break
-            try:
-                if isinstance(data, bytes):
-                    data = data.decode(self.ENCODING)
-            except Exception as exc:
-                logger.exception("%r failed to decode %r: %r", self, data, exc)
-                raise
+            if isinstance(data, bytes):
+                data = data.decode(errors='backslashreplace')
             self.buff.write(data)
         return self.buff.getvalue()
 
-    def cleanup(self, ):
+    def cleanup(
+        self,
+    ):
         self.thread.join()
 
 
-class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
+class TestProcess:
     __test__ = False
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, stdout: IO = subprocess.PIPE, **kwargs):
         kwargs.setdefault('env', os.environ)
         kwargs.setdefault('bufsize', 1)
         kwargs.setdefault('universal_newlines', True)
-        self.proc = subprocess.Popen(
-            args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            close_fds=sys.platform != "win32",
-            **kwargs
-        )
-        super(TestProcess, self).__init__(self.proc.stdout)
+        kwargs.setdefault('stderr', subprocess.STDOUT)
+        kwargs.setdefault('close_fds', sys.platform != 'win32')
+
+        if stdout is subprocess.PIPE:
+            self.proc = subprocess.Popen(args, stdout=stdout, **kwargs)
+            self.buff = (PipeBuffer if fcntl else ThreadedBuffer)(self.proc.stdout)
+        else:
+            self.buff = FileBuffer(stdout.name)
+            self.proc = subprocess.Popen(args, stdout=stdout, **kwargs)
+        self.trailer = ''
+
+    def read(self):
+        return self.buff.read() + self.trailer
 
     @property
     def is_alive(self):
@@ -141,7 +143,7 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
         self.proc.send_signal(sig)
 
     def __repr__(self):
-        return "TestProcess(pid=%s, is_alive=%s)" % (self.proc.pid, self.is_alive)
+        return f'TestProcess(pid={self.proc.pid}, is_alive={self.is_alive})'
 
     def __enter__(self):
         return self
@@ -160,7 +162,7 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                         if exc.errno == errno.ESRCH:
                             return
                         else:
-                            logger.exception("%r failed to terminate process: %r", self, exc)
+                            logger.exception('%r failed to terminate process: %r', self, exc)
                 else:
                     return
                 time.sleep(0.2)
@@ -175,40 +177,36 @@ class TestProcess(BufferingBase if fcntl else ThreadedBufferingBase):
                 data, _ = self.proc.communicate()
                 try:
                     if isinstance(data, bytes):
-                        data = data.decode(self.ENCODING)
+                        data = data.decode(errors='backslashreplace')
                 except Exception as exc:
-                    logger.exception("%s failed to decode %r: %r", self, data, exc)
+                    logger.exception('%s failed to decode %r: %r', self, data, exc)
                     raise
-                self.buff.write(data)
-            except IOError as exc:
+                self.trailer = data
+            except OSError as exc:
                 if exc.errno != errno.EAGAIN:
                     logger.exception('%s failed to cleanup buffers: %r', self, exc)
             except Exception as exc:
                 logger.exception('%s failed to cleanup buffers: %r', self, exc)
             try:
-                self.cleanup()
+                self.buff.cleanup()
             except Exception as exc:
                 logger.exception('%s failed to cleanup: %r', self, exc)
 
     close = __exit__
 
 
-class TestSocket(BufferingBase if fcntl else ThreadedBufferingBase):
+class TestSocket(PipeBuffer if fcntl else ThreadedBuffer):
     __test__ = False
-    BUFFSIZE = 8192
 
     def __init__(self, sock):
         self.sock = sock
-        if PY3:
-            self.fh = sock.makefile('rbw', buffering=1)
-        else:
-            self.fh = sock.makefile(bufsize=0)
+        self.fh = sock.makefile('rbw', buffering=1)
 
         if fcntl:
             sock.setblocking(0)
-            super(TestSocket, self).__init__(sock)
+            super().__init__(sock)
         else:
-            super(TestSocket, self).__init__(self.fh)
+            super().__init__(self.fh)
 
     def __enter__(self):
         return self
@@ -217,7 +215,7 @@ class TestSocket(BufferingBase if fcntl else ThreadedBufferingBase):
         try:
             self.sock.shutdown(socket.SHUT_RDWR)
             self.sock.close()
-        except (OSError, socket.error) as exc:
+        except OSError as exc:
             if exc.errno not in BAD_FD_ERRORS:
                 raise
 
@@ -244,32 +242,25 @@ def wait_for_strings(cb, seconds, *strings):
             break
         time.sleep(0.05)
 
-    raise AssertionError("Waited %0.2fsecs but %s did not appear in output in the given order !" % (
-        seconds, check_strings
-    ))
+    raise AssertionError(f'Waited {seconds:0.2f}secs but {check_strings} did not appear in output in the given order !')
 
 
 @contextmanager
-def dump_on_error(cb):
+def dump_on_error(cb, heading=None):
     try:
         yield
     except Exception:
-        print("*********** OUTPUT ***********")
+        print(f' {heading or cb} '.center(100, '*'))
         print(cb())
-        print("******************************")
+        print('*' * 100)
         raise
 
 
 @contextmanager
-def dump_always(cb):
+def dump_always(cb, heading=None):
     try:
         yield
     finally:
-        print("*********** OUTPUT ***********")
+        print(f' {heading or cb} '.center(100, '*'))
         print(cb())
-        print("******************************")
-
-
-class ProcessTestCase(unittest.TestCase):
-    dump_on_error = staticmethod(dump_on_error)
-    wait_for_strings = staticmethod(wait_for_strings)
+        print('*' * 100)
