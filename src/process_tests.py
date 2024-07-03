@@ -223,7 +223,7 @@ class TestSocket(PipeBuffer if fcntl else ThreadedBuffer):
     close = __exit__
 
 
-def wait_for_strings(cb, seconds, *strings):
+def wait_for_strings(cb, seconds, *strings, ignore_case=False):
     """
     This checks that *string appear in cb(), IN THE GIVEN ORDER !
     """
@@ -232,7 +232,11 @@ def wait_for_strings(cb, seconds, *strings):
         buff = cb()
         check_strings = list(strings)
         check_strings.reverse()
+        if ignore_case:
+            check_strings = [string.casefold() for string in check_strings]
         for line in buff.splitlines():
+            if ignore_case:
+                line = line.casefold()
             if not check_strings:
                 break
             while check_strings and check_strings[-1] in line:
